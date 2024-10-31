@@ -1,5 +1,9 @@
 import argparse
-
+from os import error
+import triton_viz
+from triton_viz.clients.sanitizer.data import OutOfBoundsRecord
+from triton_viz.core.trace import launches
+import numpy as np
 
 def parse_torchbench_args():
     tb_args = argparse.Namespace()
@@ -34,3 +38,25 @@ def parse_torchbench_args():
     tb_args.test_only = True
 
     return tb_args
+
+def check_out_of_bounds():
+    assert len(launches) > 0, "No launches found, make sure you run triton kernel with @triton_viz.trace!"
+    error_msgs = []
+    for launch in launches:
+        for record in launch.records:
+            if isinstance(record, OutOfBoundsRecord):
+                result_invalid_masks = record.invalid_access_masks
+                if np.any(result_invalid_masks):
+                    non_false_indices = np.where(result_invalid_masks)
+                    error_msg = f"Found out-of-bound error at indices: {non_false_indices}\n"
+                    error_msg += f"Total indices: {len(result_invalid_masks)}\n"
+                    error_msg += 60 * "=" + "\n"
+                    error_msgs.append(error_msg)                              
+    
+    if error_msgs:
+        print(20 * '=' + 'Out-of-bound error detected!' + 20 * '=')
+        for error_msg in error_msgs:
+            print(error_msg)
+        assert False
+
+    triton_viz.clear()

@@ -1,3 +1,6 @@
 [submodule "pytorch_benchmark"]
 	path = pytorch_benchmark
 	url = https://github.com/pytorch/benchmark.git
+[submodule "liger_kernel"]
+	path = liger_kernel
+	url = https://github.com/linkedin/Liger-Kernel.git

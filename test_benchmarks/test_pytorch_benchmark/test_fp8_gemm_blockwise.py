@@ -1,16 +1,16 @@
+import torch
 import pytest
 from benchmark_utils import parse_torchbench_args, check_out_of_bounds
 from torchbenchmark.operators import load_opbench_by_name
-import torch
 
-# 20 tests are enough to cover the sum operator
 @pytest.mark.parametrize("iter", range(20))
-def test_triton_sum(iter):
-    Operator = load_opbench_by_name('sum')
+def test_triton_fp8_gemm(iter):
+    Operator = load_opbench_by_name('fp8_gemm_blockwise')
     opbench = Operator(tb_args=parse_torchbench_args())
-    
-    x = opbench.get_example_inputs()[0]
 
-    ans = opbench.triton_sum(x)()
+    xq, wq, x_scale, w_scale = opbench.get_example_inputs()
+
+    c = opbench._triton(xq, wq, x_scale, w_scale)()
+    assert c.device.type == 'cuda'
 
     check_out_of_bounds()

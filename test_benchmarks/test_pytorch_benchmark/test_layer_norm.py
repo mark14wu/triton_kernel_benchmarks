@@ -1,5 +1,5 @@
 import pytest
-from benchmark_utils import parse_torchbench_args
+from benchmark_utils import parse_torchbench_args, check_out_of_bounds
 from torchbenchmark.operators import load_opbench_by_name
 import torch
 
@@ -14,3 +14,5 @@ def test_triton_layer_norm(iter):
 
     assert ans is not None, "ans is None"
     assert ans.device.type == 'cuda'
+
+    check_out_of_bounds()

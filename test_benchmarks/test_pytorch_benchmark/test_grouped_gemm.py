@@ -1,9 +1,9 @@
 import pytest
-from benchmark_utils import parse_torchbench_args
+from benchmark_utils import parse_torchbench_args, check_out_of_bounds
 from torchbenchmark.operators import load_opbench_by_name
 import torch
 
-@pytest.mark.parametrize("iter", range(4))
+@pytest.mark.parametrize("iter", range(8))
 def test_triton(iter):
     Operator = load_opbench_by_name('grouped_gemm')
     opbench = Operator(tb_args=parse_torchbench_args())
@@ -14,3 +14,5 @@ def test_triton(iter):
 
     for ans in ans_list:
         assert ans.device.type == 'cuda'
+
+    check_out_of_bounds()
