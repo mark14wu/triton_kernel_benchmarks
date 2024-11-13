@@ -4,3 +4,6 @@
 [submodule "liger_kernel"]
 	path = liger_kernel
 	url = https://github.com/linkedin/Liger-Kernel.git
+[submodule "flash-linear-attention"]
+	path = flash-linear-attention
+	url = https://github.com/sustcsonglin/flash-linear-attention.git
