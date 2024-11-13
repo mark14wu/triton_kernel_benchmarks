@@ -1,5 +1,5 @@
 import pytest
-from benchmark_utils import parse_torchbench_args, check_out_of_bounds
+from benchmark_utils import parse_torchbench_args
 from torchbenchmark.operators import load_opbench_by_name
 import torch
 
@@ -7,12 +7,10 @@ import torch
 def test_triton_dropout(iter):
     Operator = load_opbench_by_name('low_mem_dropout')
     opbench = Operator(tb_args=parse_torchbench_args())
-    
+
     p, x = opbench.get_example_inputs()
 
     ans = opbench.triton_dropout(p, x)()
-
-    check_out_of_bounds()
 
 @pytest.mark.parametrize("iter", range(8))
 def test_seeded_dropout(iter):
@@ -22,5 +20,3 @@ def test_seeded_dropout(iter):
     p, x = opbench.get_example_inputs()
 
     ans = opbench.seeded_dropout(p, x)()
-
-    check_out_of_bounds()

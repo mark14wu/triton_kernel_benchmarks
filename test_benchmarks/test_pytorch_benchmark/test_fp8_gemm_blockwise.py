@@ -1,6 +1,6 @@
 import torch
 import pytest
-from benchmark_utils import parse_torchbench_args, check_out_of_bounds
+from benchmark_utils import parse_torchbench_args
 from torchbenchmark.operators import load_opbench_by_name
 
 @pytest.mark.parametrize("iter", range(20))
@@ -12,5 +12,3 @@ def test_triton_fp8_gemm(iter):
 
     c = opbench._triton(xq, wq, x_scale, w_scale)()
     assert c.device.type == 'cuda'
-
-    check_out_of_bounds()

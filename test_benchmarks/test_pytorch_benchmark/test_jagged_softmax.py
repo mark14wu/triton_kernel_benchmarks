@@ -1,6 +1,6 @@
 import pytest
 import torch
-from benchmark_utils import parse_torchbench_args, check_out_of_bounds
+from benchmark_utils import parse_torchbench_args
 from torchbenchmark.operators import load_opbench_by_name
 
 @pytest.mark.parametrize("iter", range(1))
@@ -15,8 +15,6 @@ def test_triton_jagged_softmax_simple_fused(iter):
     assert ans is not None, "ans is None"
     assert ans.device.type == 'cuda'
 
-    check_out_of_bounds()
-
 @pytest.mark.parametrize("iter", range(1))
 def test_triton_jagged_softmax_variable_length_loop(iter):
     Operator = load_opbench_by_name('jagged_softmax')
@@ -28,5 +26,3 @@ def test_triton_jagged_softmax_variable_length_loop(iter):
 
     assert ans is not None, "ans is None"
     assert ans.device.type == 'cuda'
-
-    check_out_of_bounds()

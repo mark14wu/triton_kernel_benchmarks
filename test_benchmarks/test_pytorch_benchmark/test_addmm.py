@@ -7,7 +7,7 @@ import torch
 def test_triton_addmm(iter):
     Operator = load_opbench_by_name('addmm')
     opbench = Operator(tb_args=parse_torchbench_args())
-    
+
     a, mat1, mat2 = opbench.get_example_inputs()
 
     ans = opbench.triton_addmm(a, mat1, mat2)()

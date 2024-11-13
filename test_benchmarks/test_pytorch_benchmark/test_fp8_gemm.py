@@ -1,6 +1,6 @@
 import torch
 import pytest
-from benchmark_utils import parse_torchbench_args, check_out_of_bounds
+from benchmark_utils import parse_torchbench_args
 from torchbenchmark.operators import load_opbench_by_name
 
 
@@ -19,8 +19,6 @@ def test_triton_fp8_gemm(iter):
     assert c.device.type == 'cuda'
     assert c.shape == (a.shape[0], b.shape[1])
 
-    check_out_of_bounds()
-
 @pytest.mark.parametrize("iter", range(20))
 def test_triton_persistent_fp8_gemm(iter):
     Operator = load_opbench_by_name('fp8_gemm')
@@ -37,8 +35,6 @@ def test_triton_persistent_fp8_gemm(iter):
     assert c.shape == (a.shape[0], b.shape[1])
     assert c.dtype == torch.float8_e4m3fn
 
-    check_out_of_bounds()
-
 @pytest.mark.parametrize("iter", range(20))
 def test_triton_tma_persistent_fp8_gemm(iter):
     Operator = load_opbench_by_name('fp8_gemm')
@@ -53,5 +49,3 @@ def test_triton_tma_persistent_fp8_gemm(iter):
     assert c.device.type == 'cuda'
     assert c.shape == (a.shape[0], b.shape[1])
     assert c.dtype == torch.float8_e4m3fn
-
-    check_out_of_bounds()

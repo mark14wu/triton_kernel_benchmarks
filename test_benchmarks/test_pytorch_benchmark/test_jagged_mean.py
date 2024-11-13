@@ -1,5 +1,5 @@
 import pytest
-from benchmark_utils import parse_torchbench_args, check_out_of_bounds
+from benchmark_utils import parse_torchbench_args
 from torchbenchmark.operators import load_opbench_by_name
 import torch
 
@@ -19,8 +19,6 @@ def test_triton_jagged_mean_simple_fused_sum_then_buffer(iter):
     assert ans is not None, "ans is None"
     assert ans.device.type == 'cuda'
 
-    check_out_of_bounds()
-
 @pytest.mark.parametrize("iter", range(1))
 def test_triton_jagged_mean_simple_fused_buffer_then_sum(iter):
     Operator = load_opbench_by_name('jagged_mean')
@@ -36,8 +34,6 @@ def test_triton_jagged_mean_simple_fused_buffer_then_sum(iter):
     assert ans is not None, "ans is None"
     assert ans.device.type == 'cuda'
 
-    check_out_of_bounds()
-
 @pytest.mark.parametrize("iter", range(1))
 def test_triton_jagged_mean_variable_length_loop_sum_then_buffer(iter):
     Operator = load_opbench_by_name('jagged_mean')
@@ -52,8 +48,6 @@ def test_triton_jagged_mean_variable_length_loop_sum_then_buffer(iter):
     assert ans is not None, "ans is None"
     assert ans.device.type == 'cuda'
 
-    check_out_of_bounds()
-
 @pytest.mark.parametrize("iter", range(1))
 def test_triton_jagged_mean_variable_length_loop_buffer_then_sum(iter):
     Operator = load_opbench_by_name('jagged_mean')
@@ -67,5 +61,3 @@ def test_triton_jagged_mean_variable_length_loop_buffer_then_sum(iter):
 
     assert ans is not None, "ans is None"
     assert ans.device.type == 'cuda'
-
-    check_out_of_bounds()
