@@ -29,7 +29,7 @@ def assert_close(prefix, ref, tri, ratio):
 @pytest.mark.parametrize("H", [1])
 @pytest.mark.parametrize("T", [100, 512])
 @pytest.mark.parametrize("D", [100, 256])
-@pytest.mark.parametrize("dtype", [torch.bfloat16])
+@pytest.mark.parametrize("dtype", [torch.float16])
 def test_chunk(
     B: int,
     H: int,
