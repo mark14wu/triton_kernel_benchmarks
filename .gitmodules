@@ -7,3 +7,6 @@
 [submodule "flash-linear-attention"]
 	path = flash-linear-attention
 	url = https://github.com/sustcsonglin/flash-linear-attention.git
+[submodule "FlagAttention"]
+	path = FlagAttention
+	url = https://github.com/FlagOpen/FlagAttention.git
