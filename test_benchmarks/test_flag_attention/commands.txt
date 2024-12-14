@@ -1,0 +1,12 @@
+pytest -s test_dropout.py::test_recompute_mask
+pytest -s test_flash_attention.py::test_attention_fwd
+pytest -s test_flash_attention.py::test_attention_splitkv
+pytest -s test_flash_attention.py::test_attention_bwd
+pytest -s test_flash_attention.py::test_attention_with_aux_outs
+pytest -s test_flash_attention.py::test_attention_fwd_dropout
+pytest -s test_flash_attention.py::test_attention_bwd_dropout
+pytest -s test_paged_attention.py::test_paged_attention_default
+pytest -s test_paged_attention.py::test_paged_attention_by_num_splits
+pytest -s test_paged_attention.py::test_paged_attention_by_case
+pytest -s test_piecewise_attention.py::test_attention_fwd
+pytest -s test_piecewise_attention.py::test_attention_bwd
