@@ -1,0 +1,5 @@
+{
+    "command_list_file": "test_liger_kernel/commands.txt",
+    "output_dir": "test_liger_kernel/outputs",
+    "working_dir": "/home/hwu27/workspace/triton_kernel_benchmarks/liger_kernel/test/transformers/"
+}

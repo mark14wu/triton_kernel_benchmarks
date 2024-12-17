@@ -2,6 +2,8 @@ import os
 import subprocess
 from pathlib import Path
 import time
+import json
+
 
 def run_commands(command_list_file, output_dir, working_dir, dryrun=False):
     # Ensure output directory exists
@@ -23,7 +25,7 @@ def run_commands(command_list_file, output_dir, working_dir, dryrun=False):
     # Define the different prefixes and their environment setup
     prefixes = [
         "",
-        "compute-sanitizer ",
+        "PYTORCH_NO_CUDA_MEMORY_CACHING=1 compute-sanitizer ",
         "TRITON_SANITIZER_BACKEND=brute_force "
     ]
     prefix_env_setup = {
@@ -83,8 +85,21 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=str, default="outputs", help="Directory to save output logs.")
     parser.add_argument("--working-dir", type=str, default="/home/hwu27/workspace/triton_kernel_benchmarks/FlagAttention/tests/flag_attn", help="Working directory to run commands.")
     parser.add_argument("--dryrun", action="store_true", help="If set, only print the commands without executing them.")
+    parser.add_argument("--config-file", type=str, help="Load arguments from a configuration file.")
 
     args = parser.parse_args()
+
+    # Load arguments from config file if provided
+    if args.config_file:
+        if os.path.exists(args.config_file):
+            with open(args.config_file, "r") as f:
+                config_args = json.load(f)
+            for key, value in config_args.items():
+                # Only set attributes that are not already set via command line
+                if not hasattr(args, key) or getattr(args, key) == parser.get_default(key):
+                    setattr(args, key, value)
+        else:
+            print(f"Warning: Config file {args.config_file} not found. Skipping.")
 
     # Expand the working directory path
     working_dir = os.path.expanduser(args.working_dir)
