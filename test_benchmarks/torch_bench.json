@@ -1,5 +1,6 @@
 {
     "command_list_file": "test_pytorch_benchmark/commands.txt",
     "output_dir": "test_pytorch_benchmark/outputs",
-    "working_dir": "test_pytorch_benchmark/"
+    "working_dir": "test_pytorch_benchmark/",
+    "selected_prefixes": "baseline, compute-sanitizer"
 }
