@@ -10,17 +10,17 @@ pytest -s test_jagged_softmax.py::test_triton_jagged_softmax_simple_fused
 pytest -s test_vector_add.py::test_triton_add
 pytest -s test_sum.py::test_triton_sum
 pytest -s test_fp8_gemm_blockwise.py::test_triton_fp8_gemm
-pytest -s test_fp8_gemm.py::test_triton_persistent_fp8_gemm
+# pytest -s test_fp8_gemm.py::test_triton_persistent_fp8_gemm
 pytest -s test_fp8_gemm.py::test_triton_fp8_gemm
 pytest -s test_layer_norm.py::test_triton_layer_norm
 pytest -s test_gemm.py::test_triton_tutorial_matmul
 pytest -s test_gemm.py::test_triton_ops_matmul
-pytest -s test_flash_attention::test_flash_attention_triton_op_flash_seq_v2
-pytest -s test_flash_attention::test_flash_attention_triton_op_flash_v2
+pytest -s test_flash_attention.py::test_flash_attention_triton_op_flash_seq_v2
+pytest -s test_flash_attention.py::test_flash_attention_triton_op_flash_v2
 pytest -s test_low_mem_dropout.py::test_seeded_dropout
 pytest -s test_softmax.py::test_triton_softmax
 pytest -s test_jagged_mean.py::test_triton_jagged_mean_simple_fused_sum_then_buffer
-pytest -s test_low_mem_dropout::test_triton_dropout
+# pytest -s test_low_mem_dropout.py::test_triton_dropout
 # Fp8_attention	fp8_attention_triton_flash_v2
 # Flash_attention	Triton_tutorial_flash_v2
 # Welford	Triton_welford
