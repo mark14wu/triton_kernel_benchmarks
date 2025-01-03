@@ -54,13 +54,13 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes, 
             full_cmd = f"{prefix}{cmd}"
             output_file = Path(output_dir) / f"{full_cmd.replace(' ', '_').replace('::', '_').replace('/', '_')}.log"
 
-            # Check if command is already completed
-            if full_cmd in completed_commands:
-                print(f"Skipping: {full_cmd} (already completed)")
-                continue
-
             command_counter += 1
             progress = f"[{command_counter}/{total_commands}]"
+
+            # Check if command is already completed
+            if full_cmd in completed_commands:
+                print(f"Skipping {progress}: {full_cmd} (already completed)")
+                continue
 
             if dryrun:
                 print(f"Dryrun {progress}: Prefix: '{prefix_key}', Command: '{cmd}' -> Output: {output_file}")
