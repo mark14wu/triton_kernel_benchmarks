@@ -13,3 +13,6 @@
 [submodule "unsloth"]
 	path = unsloth
 	url = https://github.com/unslothai/unsloth.git
+[submodule "FlagGems"]
+	path = FlagGems
+	url = https://github.com/FlagOpen/FlagGems.git
