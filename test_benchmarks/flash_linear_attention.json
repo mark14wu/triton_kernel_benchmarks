@@ -1,6 +1,6 @@
 {
     "command_list_file": "test_flash_linear_attention/commands.txt",
     "output_dir": "test_flash_linear_attention/outputs",
-    "working_dir": "../flash-linear-attention/",
+    "working_dir": "test_flash_linear_attention/",
     "selected_prefixes": "baseline, compute-sanitizer"
 }
