@@ -1,6 +1,6 @@
 {
     "command_list_file": "test_flag_attention/commands.txt",
     "output_dir": "test_flag_attention/outputs",
-    "working_dir": "/home/hwu27/workspace/triton_kernel_benchmarks/FlagAttention/tests/flag_attn",
+    "working_dir": "../FlagAttention/tests/flag_attn",
     "selected_prefixes": "baseline, compute-sanitizer"
 }
