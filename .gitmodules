@@ -16,3 +16,6 @@
 [submodule "FlagGems"]
 	path = FlagGems
 	url = https://github.com/FlagOpen/FlagGems.git
+[submodule "vllm"]
+	path = vllm
+	url = https://github.com/vllm-project/vllm.git
