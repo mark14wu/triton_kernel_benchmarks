@@ -25,7 +25,8 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes, 
     prefixes = {
         "baseline": "",
         "compute-sanitizer": "PYTORCH_NO_CUDA_MEMORY_CACHING=1 compute-sanitizer ",
-        "triton-sanitizer": "TRITON_SANITIZER_BACKEND=brute_force "
+        "triton-sanitizer": "TRITON_SANITIZER_BACKEND=brute_force ",
+        "z3-sanitizer": "TRITON_SANITIZER_BACKEND=z3 "
     }
     prefix_env_setup = {
         "compute-sanitizer": "source /etc/profile.d/modules.sh && module load cuda/12.2"
