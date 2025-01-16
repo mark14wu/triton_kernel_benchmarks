@@ -1,0 +1,3 @@
+# pytest -s test_deepseek_v3.py::test_sample_prompts
+pytest -s test_gemma_7b.py::test_sample_prompts
+pytest -s test_llama3_8b.py::test_sample_prompts
