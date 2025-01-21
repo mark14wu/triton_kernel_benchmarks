@@ -94,6 +94,7 @@ def save_tsv_results(tsv_file, results_dict):
             f.write(f"{kn}\t{tcn}\t{baseline_time}\t{compute_sanitizer_time}\t{z3_time}\n")
 
 def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
+    """Run commands with different prefixes, handle logging, and produce/update a TSV file with results."""
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
@@ -108,7 +109,15 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
 
     # Read command list from file
     with open(command_list_file, "r") as f:
-        commands = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
+        raw_lines = f.readlines()
+
+    commands = []
+    for line in raw_lines:
+        line = line.rstrip("\n")
+        if not line.strip():
+            # Skip empty lines
+            continue
+        commands.append(line)
 
     # Define the different prefixes and their environment setup
     prefixes = {
@@ -133,8 +142,25 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
             if sp not in prefixes:
                 raise ValueError(f"Invalid prefix: {sp}. Choose from {list(prefixes.keys())} or 'all'.")
 
+    # Prepare the TSV file paths
+    tsv_file_path = os.path.join(output_dir, "results.tsv")
+    md5_file_path = os.path.join(output_dir, "results.md5")
+
+    # 1) If TSV exists, verify MD5
+    if os.path.exists(tsv_file_path) and os.path.exists(md5_file_path):
+        old_md5 = None
+        with open(md5_file_path, "r") as mdf:
+            old_md5 = mdf.read().strip()
+        current_md5 = compute_md5(tsv_file_path)
+        if current_md5 != old_md5:
+            raise RuntimeError("TSV file has been modified externally (MD5 mismatch). Aborting for safety.")
+
+    # 2) Load existing results
+    results_dict = load_tsv_results(tsv_file_path)
+
     # Total commands for progress reporting
-    total_commands = len(commands) * len(selected_prefixes)
+    normal_commands_count = sum(1 for c in commands if not c.strip().startswith("#"))
+    total_commands = normal_commands_count * len(selected_prefixes)
     command_counter = 0
 
     # Execute commands in the specified order
