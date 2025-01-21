@@ -31,6 +31,8 @@ def main():
     with open(command_list_file, "w", encoding="utf-8") as f, open(excel_output_file, "w", encoding="utf-8") as excel_f:
         excel_f.write("Kernel Name\tTest Case Name\n")  # Write Excel header
         for line in process.stdout.splitlines():
+            if "tests collected in" in line:
+                continue
             if "=============================== warnings summary ===============================" in line:
                 break
             if line.strip():
@@ -38,7 +40,7 @@ def main():
                 test_identifier = line.split("[")[0]
                 # Remove everything before the first '/' if present
                 if "/" in test_identifier:
-                    test_identifier = test_identifier.split("/", 1)[1]
+                    test_identifier = test_identifier.rsplit("/", 1)[-1]
                 collected_tests.add(test_identifier)
 
         for test in sorted(collected_tests):
