@@ -3,6 +3,95 @@ import subprocess
 from pathlib import Path
 import time
 import json
+import hashlib
+
+def compute_md5(file_path):
+    """Compute MD5 checksum of a file."""
+    hasher = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+def parse_command_line(cmd_line):
+    """
+    Parse a command line (e.g., 'pytest -s test_ops.py::test_something') to extract kernel_name and test_case_name.
+    If it doesn't match the pattern, return the entire line as kernel_name and empty test_case_name.
+    """
+    # Default
+    kernel_name = cmd_line
+    test_case_name = ""
+
+    # Simple parse for 'pytest' commands
+    if "pytest" in cmd_line:
+        # Try splitting by '::'
+        parts = cmd_line.split("::")
+        if len(parts) == 2:
+            left, right = parts
+            test_case_name = right.strip()
+
+            # Now remove '.py' from the left part if present
+            left = left.strip()
+            if ".py" in left:
+                left = left.split(".py")[0]
+                # Also remove leading paths if any
+                left = left.split()[-1]  # e.g., if 'pytest -s tests/test_ops.py'
+                left = left.split("/")[-1]  # remove any directories
+            kernel_name = left.replace("pytest -s", "").replace("pytest", "").strip()
+        else:
+            # If no '::', fallback to a simpler parse
+            # e.g. 'pytest -s test_ops.py'
+            cmd_line = cmd_line.replace("pytest -s", "").replace("pytest", "").strip()
+            if ".py" in cmd_line:
+                cmd_line = cmd_line.split(".py")[0].strip()
+                kernel_name = cmd_line.split("/")[-1]
+    return kernel_name, test_case_name
+
+def load_tsv_results(tsv_file):
+    """
+    Load existing results from a TSV file into a dictionary:
+    results_dict[(kernel_name, test_case_name)] = {
+        'baseline': str_time or 'n/a' or 'skipped:...' or 'failed',
+        'compute-sanitizer': ...,
+        'z3-sanitizer': ...
+    }
+    We only track these three prefixes as per requirement.
+    """
+    results = {}
+    if not os.path.exists(tsv_file):
+        return results
+
+    with open(tsv_file, "r") as f:
+        # Skip header
+        header = f.readline().strip().split("\t")
+        # Expecting: kernel_name, test_case_name, baseline_time, compute_sanitizer_time, z3_time
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            cols = line.split("\t")
+            if len(cols) < 5:
+                continue
+            kn, tcn, baseline_t, compute_sanitizer_t, z3_t = cols
+            results[(kn, tcn)] = {
+                "baseline": baseline_t,
+                "compute-sanitizer": compute_sanitizer_t,
+                "z3-sanitizer": z3_t
+            }
+    return results
+
+def save_tsv_results(tsv_file, results_dict):
+    """
+    Save the results to a TSV file.
+    Columns: kernel_name, test_case_name, baseline_time, compute_sanitizer_time, z3_time
+    """
+    with open(tsv_file, "w") as f:
+        f.write("kernel_name\ttest_case_name\tbaseline_time\tcompute_sanitizer_time\tz3_time\n")
+        for (kn, tcn), time_map in results_dict.items():
+            baseline_time = time_map.get("baseline", "n/a")
+            compute_sanitizer_time = time_map.get("compute-sanitizer", "n/a")
+            z3_time = time_map.get("z3-sanitizer", "n/a")
+            f.write(f"{kn}\t{tcn}\t{baseline_time}\t{compute_sanitizer_time}\t{z3_time}\n")
 
 def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
     # Ensure output directory exists
