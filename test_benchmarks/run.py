@@ -164,42 +164,111 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
     command_counter = 0
 
     # Execute commands in the specified order
-    for prefix_key in selected_prefixes:
-        prefix = prefixes[prefix_key]
-        for cmd in commands:
-            full_cmd = f"{prefix}{cmd}"
-            output_file = Path(output_dir) / f"{full_cmd.replace(' ', '_').replace('::', '_').replace('/', '_')}.log"
+    for line in commands:
+        # Check if it's a commented line
+        if line.startswith("#"):
+            # We still create a row in the TSV, marking times as "skipped"
+            # Possibly parse reason after the '#' and the actual command after a ':'
+            line_content = line[1:].strip()
+            if ":" in line_content:
+                reason_part, real_cmd = line_content.split(":", 1)
+                reason_part = reason_part.strip()
+                real_cmd = real_cmd.strip()
+                # Parse kernel_name/test_case_name from the real command
+                kn, tcn = parse_command_line(real_cmd)
+                skip_reason = reason_part
+            else:
+                # No explicit reason, just skip
+                kn, tcn = parse_command_line(line_content)
+                skip_reason = ""
 
+            if (kn, tcn) not in results_dict:
+                results_dict[(kn, tcn)] = {
+                    "baseline": f"skipped: {skip_reason}" if skip_reason else "skipped",
+                    "compute-sanitizer": f"skipped: {skip_reason}" if skip_reason else "skipped",
+                    "z3-sanitizer": f"skipped: {skip_reason}" if skip_reason else "skipped"
+                }
+            else:
+                # If it already exists, we forcibly set them to "skipped", in case it wasn't set before
+                for p_col in ["baseline", "compute-sanitizer", "z3-sanitizer"]:
+                    results_dict[(kn, tcn)][p_col] = f"skipped: {skip_reason}" if skip_reason else "skipped"
+            # We don't run anything for a commented line, just continue
+            continue
+
+        # If it's a normal command:
+        kn, tcn = parse_command_line(line)
+
+        # Make sure there's an entry in results_dict
+        if (kn, tcn) not in results_dict:
+            # Initialize with 'n/a' if there's no prior record
+            results_dict[(kn, tcn)] = {
+                "baseline": "n/a",
+                "compute-sanitizer": "n/a",
+                "z3-sanitizer": "n/a"
+            }
+
+        # For each prefix
+        for prefix_key in selected_prefixes:
             command_counter += 1
-            progress = f"[{command_counter}/{total_commands}]"
+            progress = f"[{command_counter}/{total_commands}]" if normal_commands_count > 0 else ""
+
+            full_cmd = f"{prefixes[prefix_key]}{line}"
 
             # Check if command is already completed
             if full_cmd in completed_commands:
                 print(f"Skipping {progress}: {full_cmd} (already completed)")
                 continue
 
-            print(f"Running {progress}: Prefix: '{prefix_key}', Command: '{cmd}'")
+            print(f"Running {progress}: Prefix: '{prefix_key}', Command: '{line}'")
 
-            # Run the command and save output
-            with open(output_file, "w") as outfile:
-                start_time = time.time()
-                # Setup environment for specific prefixes
-                if prefix_key in prefix_env_setup:
-                    env_command = prefix_env_setup[prefix_key]
-                    process = subprocess.Popen(f"bash -c 'source ~/.bashrc && {env_command} && {full_cmd}'", shell=True, cwd=working_dir, stdout=outfile, stderr=subprocess.STDOUT)
-                else:
-                    process = subprocess.Popen(f"bash -c 'source ~/.bashrc && {full_cmd}'", shell=True, cwd=working_dir, stdout=outfile, stderr=subprocess.STDOUT)
-                process.wait()
-                elapsed_time = time.time() - start_time
+            output_file = Path(output_dir) / f"{full_cmd.replace(' ', '_').replace('::', '_').replace('/', '_')}.log"
+            start_time = time.time()
+
+            # Run command
+            if prefix_key in prefix_env_setup:
+                env_command = prefix_env_setup[prefix_key]
+                process = subprocess.Popen(
+                    f"bash -c 'source ~/.bashrc && {env_command} && {full_cmd}'",
+                    shell=True, cwd=working_dir, stdout=open(output_file, "w"), stderr=subprocess.STDOUT
+                )
+            else:
+                process = subprocess.Popen(
+                    f"bash -c 'source ~/.bashrc && {full_cmd}'",
+                    shell=True, cwd=working_dir, stdout=open(output_file, "w"), stderr=subprocess.STDOUT
+                )
+            process.wait()
+            elapsed_time = time.time() - start_time
 
             # Check if command executed successfully
             if process.returncode == 0:
                 with open(progress_log_file, "a") as log:
                     log.write(full_cmd + "\n")
-                print(f"Completed {progress}: Prefix: '{prefix_key}', Command: '{cmd}' in {elapsed_time:.2f}s")
+                print(f"Completed {progress}: Prefix: '{prefix_key}', Command: '{line}' in {elapsed_time:.2f}s")
+
+                # Update results_dict only if prefix_key is in the columns we care about
+                if prefix_key == "baseline":
+                    results_dict[(kn, tcn)]["baseline"] = f"{elapsed_time:.4f}"
+                elif prefix_key == "compute-sanitizer":
+                    results_dict[(kn, tcn)]["compute-sanitizer"] = f"{elapsed_time:.4f}"
+                elif prefix_key == "z3-sanitizer":
+                    results_dict[(kn, tcn)]["z3-sanitizer"] = f"{elapsed_time:.4f}"
             else:
-                print(f"Failed {progress}: Prefix: '{prefix_key}', Command: '{cmd}'")
-                return
+                print(f"Failed {progress}: Prefix: '{prefix_key}', Command: '{line}'")
+                # If it fails, we mark 'failed' in the TSV if prefix_key is one of the three columns
+                if prefix_key == "baseline":
+                    results_dict[(kn, tcn)]["baseline"] = "failed"
+                elif prefix_key == "compute-sanitizer":
+                    results_dict[(kn, tcn)]["compute-sanitizer"] = "failed"
+                elif prefix_key == "z3-sanitizer":
+                    results_dict[(kn, tcn)]["z3-sanitizer"] = "failed"
+
+            # After each command, save the TSV
+            save_tsv_results(tsv_file_path, results_dict)
+
+            # Compute new MD5 and save
+            new_md5 = compute_md5(tsv_file_path)
+            with open(md5_file_path, "w") as mdf:
+                mdf.write(new_md5)
 
 if __name__ == "__main__":
     import argparse
