@@ -4,7 +4,7 @@ from pathlib import Path
 import time
 import json
 
-def run_commands(command_list_file, output_dir, working_dir, selected_prefixes, dryrun=False):
+def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
@@ -63,42 +63,38 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes, 
                 print(f"Skipping {progress}: {full_cmd} (already completed)")
                 continue
 
-            if dryrun:
-                print(f"Dryrun {progress}: Prefix: '{prefix_key}', Command: '{cmd}' -> Output: {output_file}")
-            else:
-                print(f"Running {progress}: Prefix: '{prefix_key}', Command: '{cmd}'")
+            print(f"Running {progress}: Prefix: '{prefix_key}', Command: '{cmd}'")
 
-                # Run the command and save output
-                with open(output_file, "w") as outfile:
-                    start_time = time.time()
-                    # Setup environment for specific prefixes
-                    if prefix_key in prefix_env_setup:
-                        env_command = prefix_env_setup[prefix_key]
-                        process = subprocess.Popen(f"bash -c 'source ~/.bashrc && {env_command} && {full_cmd}'", shell=True, cwd=working_dir, stdout=outfile, stderr=subprocess.STDOUT)
-                    else:
-                        process = subprocess.Popen(f"bash -c 'source ~/.bashrc && {full_cmd}'", shell=True, cwd=working_dir, stdout=outfile, stderr=subprocess.STDOUT)
-                    process.wait()
-                    elapsed_time = time.time() - start_time
-
-                # Check if command executed successfully
-                if process.returncode == 0:
-                    with open(progress_log_file, "a") as log:
-                        log.write(full_cmd + "\n")
-                    print(f"Completed {progress}: Prefix: '{prefix_key}', Command: '{cmd}' in {elapsed_time:.2f}s")
+            # Run the command and save output
+            with open(output_file, "w") as outfile:
+                start_time = time.time()
+                # Setup environment for specific prefixes
+                if prefix_key in prefix_env_setup:
+                    env_command = prefix_env_setup[prefix_key]
+                    process = subprocess.Popen(f"bash -c 'source ~/.bashrc && {env_command} && {full_cmd}'", shell=True, cwd=working_dir, stdout=outfile, stderr=subprocess.STDOUT)
                 else:
-                    print(f"Failed {progress}: Prefix: '{prefix_key}', Command: '{cmd}'")
-                    return
+                    process = subprocess.Popen(f"bash -c 'source ~/.bashrc && {full_cmd}'", shell=True, cwd=working_dir, stdout=outfile, stderr=subprocess.STDOUT)
+                process.wait()
+                elapsed_time = time.time() - start_time
+
+            # Check if command executed successfully
+            if process.returncode == 0:
+                with open(progress_log_file, "a") as log:
+                    log.write(full_cmd + "\n")
+                print(f"Completed {progress}: Prefix: '{prefix_key}', Command: '{cmd}' in {elapsed_time:.2f}s")
+            else:
+                print(f"Failed {progress}: Prefix: '{prefix_key}', Command: '{cmd}'")
+                return
 
 if __name__ == "__main__":
     import argparse
 
     # Argument parser setup
-    parser = argparse.ArgumentParser(description="Run a list of commands with optional dryrun support and prefix control.")
+    parser = argparse.ArgumentParser()
     parser.add_argument("--command-list-file", type=str, default="commands.txt", help="File containing list of commands.")
     parser.add_argument("--output-dir", type=str, default="outputs", help="Directory to save output logs.")
-    parser.add_argument("--working-dir", type=str, default="/home/hwu27/workspace/triton_kernel_benchmarks/FlagAttention/tests/flag_attn", help="Working directory to run commands.")
+    parser.add_argument("--working-dir", type=str, default="../FlagAttention/tests/flag_attn", help="Working directory to run commands.")
     parser.add_argument("--selected-prefixes", type=str, default="all", help="Choose prefixes to run commands with (default: all). Use comma-separated values like 'baseline,compute-sanitizer'.")
-    parser.add_argument("--dryrun", action="store_true", help="If set, only print the commands without executing them.")
     parser.add_argument("--config-file", type=str, help="Load arguments from a configuration file.")
 
     args = parser.parse_args()
@@ -119,4 +115,4 @@ if __name__ == "__main__":
     working_dir = os.path.expanduser(args.working_dir)
 
     # Run the script
-    run_commands(args.command_list_file, args.output_dir, working_dir, args.selected_prefixes, dryrun=args.dryrun)
+    run_commands(args.command_list_file, args.output_dir, working_dir, args.selected_prefixes)
