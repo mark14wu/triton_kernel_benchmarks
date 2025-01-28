@@ -184,14 +184,14 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
 
             if (kn, tcn) not in results_dict:
                 results_dict[(kn, tcn)] = {
-                    "baseline": f"skipped: {skip_reason}" if skip_reason else "skipped",
-                    "compute-sanitizer": f"skipped: {skip_reason}" if skip_reason else "skipped",
-                    "z3-sanitizer": f"skipped: {skip_reason}" if skip_reason else "skipped"
+                    "baseline": f"{skip_reason}" if skip_reason else "skipped",
+                    "compute-sanitizer": f"{skip_reason}" if skip_reason else "skipped",
+                    "z3-sanitizer": f"{skip_reason}" if skip_reason else "skipped"
                 }
             else:
                 # If it already exists, we forcibly set them to "skipped", in case it wasn't set before
                 for p_col in ["baseline", "compute-sanitizer", "z3-sanitizer"]:
-                    results_dict[(kn, tcn)][p_col] = f"skipped: {skip_reason}" if skip_reason else "skipped"
+                    results_dict[(kn, tcn)][p_col] = f"{skip_reason}" if skip_reason else "skipped"
             # We don't run anything for a commented line, just continue
             continue
 
@@ -241,11 +241,8 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
 
             # Check if command executed successfully
             if process.returncode == 0:
-                with open(progress_log_file, "a") as log:
-                    log.write(full_cmd + "\n")
                 print(f"Completed {progress}: Prefix: '{prefix_key}', Command: '{line}' in {elapsed_time:.2f}s")
-
-                # Update results_dict only if prefix_key is in the columns we care about
+                # Update TSV with time
                 if prefix_key == "baseline":
                     results_dict[(kn, tcn)]["baseline"] = f"{elapsed_time:.4f}"
                 elif prefix_key == "compute-sanitizer":
@@ -254,13 +251,17 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
                     results_dict[(kn, tcn)]["z3-sanitizer"] = f"{elapsed_time:.4f}"
             else:
                 print(f"Failed {progress}: Prefix: '{prefix_key}', Command: '{line}'")
-                # If it fails, we mark 'failed' in the TSV if prefix_key is one of the three columns
+                # Update TSV with "failed"
                 if prefix_key == "baseline":
                     results_dict[(kn, tcn)]["baseline"] = "failed"
                 elif prefix_key == "compute-sanitizer":
                     results_dict[(kn, tcn)]["compute-sanitizer"] = "failed"
                 elif prefix_key == "z3-sanitizer":
                     results_dict[(kn, tcn)]["z3-sanitizer"] = "failed"
+
+            # Save progress to log
+            with open(progress_log_file, "a") as log:
+                log.write(full_cmd + "\n")
 
             # After each command, save the TSV
             save_tsv_results(tsv_file_path, results_dict)
