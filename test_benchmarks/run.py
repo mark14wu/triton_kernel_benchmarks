@@ -3,8 +3,98 @@ import subprocess
 from pathlib import Path
 import time
 import json
+import hashlib
 
-def run_commands(command_list_file, output_dir, working_dir, selected_prefixes, dryrun=False):
+def compute_md5(file_path):
+    """Compute MD5 checksum of a file."""
+    hasher = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+def parse_command_line(cmd_line):
+    """
+    Parse a command line (e.g., 'pytest -s test_ops.py::test_something') to extract kernel_name and test_case_name.
+    If it doesn't match the pattern, return the entire line as kernel_name and empty test_case_name.
+    """
+    # Default
+    kernel_name = cmd_line
+    test_case_name = ""
+
+    # Simple parse for 'pytest' commands
+    if "pytest" in cmd_line:
+        # Try splitting by '::'
+        parts = cmd_line.split("::")
+        if len(parts) == 2:
+            left, right = parts
+            test_case_name = right.strip()
+
+            # Now remove '.py' from the left part if present
+            left = left.strip()
+            if ".py" in left:
+                left = left.split(".py")[0]
+                # Also remove leading paths if any
+                left = left.split()[-1]  # e.g., if 'pytest -s tests/test_ops.py'
+                left = left.split("/")[-1]  # remove any directories
+            kernel_name = left.replace("pytest -s", "").replace("pytest", "").strip()
+        else:
+            # If no '::', fallback to a simpler parse
+            # e.g. 'pytest -s test_ops.py'
+            cmd_line = cmd_line.replace("pytest -s", "").replace("pytest", "").strip()
+            if ".py" in cmd_line:
+                cmd_line = cmd_line.split(".py")[0].strip()
+                kernel_name = cmd_line.split("/")[-1]
+    return kernel_name, test_case_name
+
+def load_tsv_results(tsv_file):
+    """
+    Load existing results from a TSV file into a dictionary:
+    results_dict[(kernel_name, test_case_name)] = {
+        'baseline': str_time or 'n/a' or 'skipped:...' or 'failed',
+        'compute-sanitizer': ...,
+        'z3-sanitizer': ...
+    }
+    We only track these three prefixes as per requirement.
+    """
+    results = {}
+    if not os.path.exists(tsv_file):
+        return results
+
+    with open(tsv_file, "r") as f:
+        # Skip header
+        header = f.readline().strip().split("\t")
+        # Expecting: kernel_name, test_case_name, baseline_time, compute_sanitizer_time, z3_time
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            cols = line.split("\t")
+            if len(cols) < 5:
+                continue
+            kn, tcn, baseline_t, compute_sanitizer_t, z3_t = cols
+            results[(kn, tcn)] = {
+                "baseline": baseline_t,
+                "compute-sanitizer": compute_sanitizer_t,
+                "z3-sanitizer": z3_t
+            }
+    return results
+
+def save_tsv_results(tsv_file, results_dict):
+    """
+    Save the results to a TSV file.
+    Columns: kernel_name, test_case_name, baseline_time, compute_sanitizer_time, z3_time
+    """
+    with open(tsv_file, "w") as f:
+        f.write("kernel_name\ttest_case_name\tbaseline_time\tcompute_sanitizer_time\tz3_time\n")
+        for (kn, tcn), time_map in results_dict.items():
+            baseline_time = time_map.get("baseline", "n/a")
+            compute_sanitizer_time = time_map.get("compute-sanitizer", "n/a")
+            z3_time = time_map.get("z3-sanitizer", "n/a")
+            f.write(f"{kn}\t{tcn}\t{baseline_time}\t{compute_sanitizer_time}\t{z3_time}\n")
+
+def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
+    """Run commands with different prefixes, handle logging, and produce/update a TSV file with results."""
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
@@ -19,7 +109,15 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes, 
 
     # Read command list from file
     with open(command_list_file, "r") as f:
-        commands = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
+        raw_lines = f.readlines()
+
+    commands = []
+    for line in raw_lines:
+        line = line.rstrip("\n")
+        if not line.strip():
+            # Skip empty lines
+            continue
+        commands.append(line)
 
     # Define the different prefixes and their environment setup
     prefixes = {
@@ -44,61 +142,144 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes, 
             if sp not in prefixes:
                 raise ValueError(f"Invalid prefix: {sp}. Choose from {list(prefixes.keys())} or 'all'.")
 
+    # Prepare the TSV file paths
+    tsv_file_path = os.path.join(output_dir, "results.tsv")
+    md5_file_path = os.path.join(output_dir, "results.md5")
+
+    # 1) If TSV exists, verify MD5
+    if os.path.exists(tsv_file_path) and os.path.exists(md5_file_path):
+        old_md5 = None
+        with open(md5_file_path, "r") as mdf:
+            old_md5 = mdf.read().strip()
+        current_md5 = compute_md5(tsv_file_path)
+        if current_md5 != old_md5:
+            raise RuntimeError("TSV file has been modified externally (MD5 mismatch). Aborting for safety.")
+
+    # 2) Load existing results
+    results_dict = load_tsv_results(tsv_file_path)
+
     # Total commands for progress reporting
-    total_commands = len(commands) * len(selected_prefixes)
+    normal_commands_count = sum(1 for c in commands if not c.strip().startswith("#"))
+    total_commands = normal_commands_count * len(selected_prefixes)
     command_counter = 0
 
     # Execute commands in the specified order
-    for prefix_key in selected_prefixes:
-        prefix = prefixes[prefix_key]
-        for cmd in commands:
-            full_cmd = f"{prefix}{cmd}"
-            output_file = Path(output_dir) / f"{full_cmd.replace(' ', '_').replace('::', '_').replace('/', '_')}.log"
+    for line in commands:
+        # Check if it's a commented line
+        if line.startswith("#"):
+            # We still create a row in the TSV, marking times as "skipped"
+            # Possibly parse reason after the '#' and the actual command after a ':'
+            line_content = line[1:].strip()
+            if ":" in line_content:
+                reason_part, real_cmd = line_content.split(":", 1)
+                reason_part = reason_part.strip()
+                real_cmd = real_cmd.strip()
+                # Parse kernel_name/test_case_name from the real command
+                kn, tcn = parse_command_line(real_cmd)
+                skip_reason = reason_part
+            else:
+                # No explicit reason, just skip
+                kn, tcn = parse_command_line(line_content)
+                skip_reason = ""
 
+            if (kn, tcn) not in results_dict:
+                results_dict[(kn, tcn)] = {
+                    "baseline": f"{skip_reason}" if skip_reason else "skipped",
+                    "compute-sanitizer": f"{skip_reason}" if skip_reason else "skipped",
+                    "z3-sanitizer": f"{skip_reason}" if skip_reason else "skipped"
+                }
+            else:
+                # If it already exists, we forcibly set them to "skipped", in case it wasn't set before
+                for p_col in ["baseline", "compute-sanitizer", "z3-sanitizer"]:
+                    results_dict[(kn, tcn)][p_col] = f"{skip_reason}" if skip_reason else "skipped"
+            # We don't run anything for a commented line, just continue
+            continue
+
+        # If it's a normal command:
+        kn, tcn = parse_command_line(line)
+
+        # Make sure there's an entry in results_dict
+        if (kn, tcn) not in results_dict:
+            # Initialize with 'n/a' if there's no prior record
+            results_dict[(kn, tcn)] = {
+                "baseline": "n/a",
+                "compute-sanitizer": "n/a",
+                "z3-sanitizer": "n/a"
+            }
+
+        # For each prefix
+        for prefix_key in selected_prefixes:
             command_counter += 1
-            progress = f"[{command_counter}/{total_commands}]"
+            progress = f"[{command_counter}/{total_commands}]" if normal_commands_count > 0 else ""
+
+            full_cmd = f"{prefixes[prefix_key]}{line}"
 
             # Check if command is already completed
             if full_cmd in completed_commands:
                 print(f"Skipping {progress}: {full_cmd} (already completed)")
                 continue
 
-            if dryrun:
-                print(f"Dryrun {progress}: Prefix: '{prefix_key}', Command: '{cmd}' -> Output: {output_file}")
+            print(f"Running {progress}: Prefix: '{prefix_key}', Command: '{line}'")
+
+            output_file = Path(output_dir) / f"{full_cmd.replace(' ', '_').replace('::', '_').replace('/', '_')}.log"
+            start_time = time.time()
+
+            # Run command
+            if prefix_key in prefix_env_setup:
+                env_command = prefix_env_setup[prefix_key]
+                process = subprocess.Popen(
+                    f"bash -c 'source ~/.bashrc && {env_command} && {full_cmd}'",
+                    shell=True, cwd=working_dir, stdout=open(output_file, "w"), stderr=subprocess.STDOUT
+                )
             else:
-                print(f"Running {progress}: Prefix: '{prefix_key}', Command: '{cmd}'")
+                process = subprocess.Popen(
+                    f"bash -c 'source ~/.bashrc && {full_cmd}'",
+                    shell=True, cwd=working_dir, stdout=open(output_file, "w"), stderr=subprocess.STDOUT
+                )
+            process.wait()
+            elapsed_time = time.time() - start_time
 
-                # Run the command and save output
-                with open(output_file, "w") as outfile:
-                    start_time = time.time()
-                    # Setup environment for specific prefixes
-                    if prefix_key in prefix_env_setup:
-                        env_command = prefix_env_setup[prefix_key]
-                        process = subprocess.Popen(f"bash -c 'source ~/.bashrc && {env_command} && {full_cmd}'", shell=True, cwd=working_dir, stdout=outfile, stderr=subprocess.STDOUT)
-                    else:
-                        process = subprocess.Popen(f"bash -c 'source ~/.bashrc && {full_cmd}'", shell=True, cwd=working_dir, stdout=outfile, stderr=subprocess.STDOUT)
-                    process.wait()
-                    elapsed_time = time.time() - start_time
+            # Check if command executed successfully
+            if process.returncode == 0:
+                print(f"Completed {progress}: Prefix: '{prefix_key}', Command: '{line}' in {elapsed_time:.2f}s")
+                # Update TSV with time
+                if prefix_key == "baseline":
+                    results_dict[(kn, tcn)]["baseline"] = f"{elapsed_time:.4f}"
+                elif prefix_key == "compute-sanitizer":
+                    results_dict[(kn, tcn)]["compute-sanitizer"] = f"{elapsed_time:.4f}"
+                elif prefix_key == "z3-sanitizer":
+                    results_dict[(kn, tcn)]["z3-sanitizer"] = f"{elapsed_time:.4f}"
+            else:
+                print(f"Failed {progress}: Prefix: '{prefix_key}', Command: '{line}'")
+                # Update TSV with "failed"
+                if prefix_key == "baseline":
+                    results_dict[(kn, tcn)]["baseline"] = "failed"
+                elif prefix_key == "compute-sanitizer":
+                    results_dict[(kn, tcn)]["compute-sanitizer"] = "failed"
+                elif prefix_key == "z3-sanitizer":
+                    results_dict[(kn, tcn)]["z3-sanitizer"] = "failed"
 
-                # Check if command executed successfully
-                if process.returncode == 0:
-                    with open(progress_log_file, "a") as log:
-                        log.write(full_cmd + "\n")
-                    print(f"Completed {progress}: Prefix: '{prefix_key}', Command: '{cmd}' in {elapsed_time:.2f}s")
-                else:
-                    print(f"Failed {progress}: Prefix: '{prefix_key}', Command: '{cmd}'")
-                    return
+            # Save progress to log
+            with open(progress_log_file, "a") as log:
+                log.write(full_cmd + "\n")
+
+            # After each command, save the TSV
+            save_tsv_results(tsv_file_path, results_dict)
+
+            # Compute new MD5 and save
+            new_md5 = compute_md5(tsv_file_path)
+            with open(md5_file_path, "w") as mdf:
+                mdf.write(new_md5)
 
 if __name__ == "__main__":
     import argparse
 
     # Argument parser setup
-    parser = argparse.ArgumentParser(description="Run a list of commands with optional dryrun support and prefix control.")
+    parser = argparse.ArgumentParser()
     parser.add_argument("--command-list-file", type=str, default="commands.txt", help="File containing list of commands.")
     parser.add_argument("--output-dir", type=str, default="outputs", help="Directory to save output logs.")
-    parser.add_argument("--working-dir", type=str, default="/home/hwu27/workspace/triton_kernel_benchmarks/FlagAttention/tests/flag_attn", help="Working directory to run commands.")
+    parser.add_argument("--working-dir", type=str, default="../FlagAttention/tests/flag_attn", help="Working directory to run commands.")
     parser.add_argument("--selected-prefixes", type=str, default="all", help="Choose prefixes to run commands with (default: all). Use comma-separated values like 'baseline,compute-sanitizer'.")
-    parser.add_argument("--dryrun", action="store_true", help="If set, only print the commands without executing them.")
     parser.add_argument("--config-file", type=str, help="Load arguments from a configuration file.")
 
     args = parser.parse_args()
@@ -119,4 +300,4 @@ if __name__ == "__main__":
     working_dir = os.path.expanduser(args.working_dir)
 
     # Run the script
-    run_commands(args.command_list_file, args.output_dir, working_dir, args.selected_prefixes, dryrun=args.dryrun)
+    run_commands(args.command_list_file, args.output_dir, working_dir, args.selected_prefixes)
