@@ -1,19 +1,50 @@
-pytest -s test_based.py::test_parallel_based
-pytest -s test_based.py::test_fused_chunk_based
-pytest -s test_delta.py::test_chunk_delta_rule
-pytest -s test_delta.py::test_fused_recurrent_delta_rule
-# found oob bug: pytest -s test_gla.py::test_chunk_gla
+pytest -s test_based.py::test_based
+pytest -s test_cumsum.py::test_cumsum_global_scalar
+pytest -s test_cumsum.py::test_cumsum_global_vector
+pytest -s test_cumsum.py::test_cumsum_local_scalar
+pytest -s test_cumsum.py::test_cumsum_local_vector
+# pytest -s test_delta.py::test_chunk
+pytest -s test_delta.py::test_chunk_varlen
+# out-of-resources: pytest -s test_delta.py::test_l2_in_kernel
+# assertion-error: pytest -s test_dplr_delta.py::test_chunk
+pytest -s test_dplr_delta.py::test_chunk_varlen
+pytest -s test_dplr_delta.py::test_fused_recurrent_fwd
+pytest -s test_dplr_delta.py::test_ref_equivalence
+# out-of-resources: pytest -s test_gated_delta.py::test_chunk
+# out-of-resources: pytest -s test_gated_delta.py::test_chunk_varlen
+# timeout: pytest -s test_gated_delta.py::test_recurrent_forward
+pytest -s test_gla.py::test_chunk
+pytest -s test_gla.py::test_chunk_varlen
+pytest -s test_gla.py::test_fused_recurrent
+# out-of-resources: pytest -s test_gsa.py::test_chunk
+pytest -s test_gsa.py::test_chunk_varlen
 pytest -s test_gsa.py::test_fused_recurrent
-# invalid device context: pytest -s test_gsa.py::test_chunk
+# timeout: pytest -s test_gsa.py::test_fused_recurrent_varlen
 pytest -s test_gsa.py::test_inference
 pytest -s test_hgrn.py::test_chunk
 pytest -s test_hgrn.py::test_fused_recurrent
+pytest -s test_hgrn.py::test_fused_recurrent_varlen
+pytest -s test_iplr_delta.py::test_chunk
+pytest -s test_iplr_delta.py::test_recurrent
 pytest -s test_linear_attn.py::test_chunk
 pytest -s test_linear_attn.py::test_fused_chunk
 pytest -s test_linear_attn.py::test_fused_recurrent
-# out of resources: pytest -s test_retention.py::test_chunk
-# out of resources: pytest -s test_retention.py::test_parallel
-pytest -s test_retention.py::test_fused_recurrent
-# found oob bug: pytest -s test_rwkv6.py::test_chunk
+pytest -s test_retention.py::test_chunk
+pytest -s test_retention.py::test_chunk_varlen
+pytest -s test_retention.py::test_parallel
+pytest -s test_rwkv6.py::test_chunk
+pytest -s test_rwkv6.py::test_chunk_varlen
 pytest -s test_simple_gla.py::test_chunk
-# pytest -s test_simple_gla.py::test_parallel
+pytest -s test_simple_gla.py::test_chunk_varlen
+pytest -s test_simple_gla.py::test_parallel
+pytest -s test_simple_gla.py::test_parallel_varlen
+pytest -s test_simple_gla.py::test_simple_gla_to_mamba2
+pytest -s test_ttt.py::test_chunk_fwd
+pytest -s test_ttt.py::test_chunk_varlen_fwd
+pytest -s test_ttt.py::test_fused_chunk_fwd
+pytest -s test_utils.py::test_global_cumsum
+pytest -s test_utils.py::test_global_cumsum_varlen
+pytest -s test_utils.py::test_global_reversed_cumsum
+pytest -s test_utils.py::test_global_reversed_cumsum_varlen
+pytest -s test_utils.py::test_local_cumsum
+pytest -s test_utils.py::test_local_cumsum_varlen
