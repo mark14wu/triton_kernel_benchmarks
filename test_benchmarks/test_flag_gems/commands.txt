@@ -89,8 +89,8 @@ pytest -s test_libentry.py::test_kernel_arg_apply_default
 pytest -s test_libentry.py::test_pass_kernel_arg_via_kw
 pytest -s test_libentry.py::test_threadsafety
 pytest -s test_norm_ops.py::test_accuracy_groupnorm
-# pytest -s test_norm_ops.py::test_accuracy_instancenorm
-# pytest -s test_norm_ops.py::test_accuracy_layernorm
+# found oob bug: pytest -s test_norm_ops.py::test_accuracy_instancenorm
+# found oob bug: pytest -s test_norm_ops.py::test_accuracy_layernorm
 pytest -s test_norm_ops.py::test_accuracy_rmsnorm
 pytest -s test_norm_ops.py::test_accuracy_skip_layernorm
 pytest -s test_norm_ops.py::test_accuracy_skip_rmsnorm
