@@ -1,0 +1,6 @@
+{
+    "command_list_file": "test_torchao/commands.txt",
+    "output_dir": "test_torchao/outputs",
+    "working_dir": "../FlagGems/tests/",
+    "selected_prefixes": "baseline, compute-sanitizer"
+}

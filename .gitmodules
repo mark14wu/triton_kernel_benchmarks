@@ -22,3 +22,6 @@
 [submodule "sglang"]
 	path = sglang
 	url = git@github.com:sgl-project/sglang.git
+[submodule "ao"]
+	path = ao
+	url = https://github.com/pytorch/ao.git
