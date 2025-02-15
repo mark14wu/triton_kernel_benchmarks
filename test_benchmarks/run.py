@@ -25,26 +25,18 @@ def parse_command_line(cmd_line):
     # Simple parse for 'pytest' commands
     if "pytest" in cmd_line:
         # Try splitting by '::'
-        parts = cmd_line.split("::")
-        if len(parts) == 2:
-            left, right = parts
-            test_case_name = right.strip()
+        parts = cmd_line.split("::", 1)
+        if len(parts) == 1:
+            print(parts)
+            raise ValueError(f"Invalid pytest command line: {cmd_line}, expected 'pytest -s <kernel_name>.py::<test_case_name>'")
+        left, right = parts
+        test_case_name = right.strip()
 
-            # Now remove '.py' from the left part if present
-            left = left.strip()
-            if ".py" in left:
-                left = left.split(".py")[0]
-                # Also remove leading paths if any
-                left = left.split()[-1]  # e.g., if 'pytest -s tests/test_ops.py'
-                left = left.split("/")[-1]  # remove any directories
-            kernel_name = left.replace("pytest -s", "").replace("pytest", "").strip()
-        else:
-            # If no '::', fallback to a simpler parse
-            # e.g. 'pytest -s test_ops.py'
-            cmd_line = cmd_line.replace("pytest -s", "").replace("pytest", "").strip()
-            if ".py" in cmd_line:
-                cmd_line = cmd_line.split(".py")[0].strip()
-                kernel_name = cmd_line.split("/")[-1]
+        # Now remove '.py' from the left part if present
+        left = left.strip()
+        if ".py" in left:
+            left = left.split(".py")[0]
+        kernel_name = left.replace("pytest -s", "").replace("pytest", "").strip()
     return kernel_name, test_case_name
 
 def load_tsv_results(tsv_file):
@@ -122,12 +114,15 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
     # Define the different prefixes and their environment setup
     prefixes = {
         "baseline": "",
+        "baseline_inductor": "TORCH_COMPILE=1 ",
         "compute-sanitizer": "PYTORCH_NO_CUDA_MEMORY_CACHING=1 compute-sanitizer ",
+        "compute-sanitizer_inductor": "TORCH_COMPILE=1 PYTORCH_NO_CUDA_MEMORY_CACHING=1 compute-sanitizer ",
         "triton-sanitizer": "TRITON_SANITIZER_BACKEND=brute_force ",
-        "z3-sanitizer": "TRITON_SANITIZER_BACKEND=z3 "
+        "z3-sanitizer": "TRITON_SANITIZER_BACKEND=z3 ",
     }
     prefix_env_setup = {
-        "compute-sanitizer": "source /etc/profile.d/modules.sh && module load cuda/12.2"
+        "compute-sanitizer": "source /etc/profile.d/modules.sh && module load cuda/12.8",
+        "compute-sanitizer_inductor": "source /etc/profile.d/modules.sh && module load cuda/12.8",
     }
 
     # Process comma-separated prefixes into a list
@@ -201,15 +196,14 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
         # Make sure there's an entry in results_dict
         if (kn, tcn) not in results_dict:
             # Initialize with 'n/a' if there's no prior record
-            results_dict[(kn, tcn)] = {
-                "baseline": "n/a",
-                "compute-sanitizer": "n/a",
-                "z3-sanitizer": "n/a"
-            }
+            results_dict[(kn, tcn)] = {}
+            for prefix_key in selected_prefixes:
+                results_dict[(kn, tcn)][prefix_key] = "n/a"
 
         # For each prefix
         for prefix_key in selected_prefixes:
             command_counter += 1
+            formatted_command_counter = str(command_counter).zfill(len(str(total_commands)))
             progress = f"[{command_counter}/{total_commands}]" if normal_commands_count > 0 else ""
 
             full_cmd = f"{prefixes[prefix_key]}{line}"
@@ -221,7 +215,7 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
 
             print(f"Running {progress}: Prefix: '{prefix_key}', Command: '{line}'")
 
-            output_file = Path(output_dir) / f"{full_cmd.replace(' ', '_').replace('::', '_').replace('/', '_')}.log"
+            output_file = Path(output_dir) / f"{formatted_command_counter}_{full_cmd.replace(' ', '_').replace('::', '_').replace('/', '_')}.log"
             start_time = time.time()
 
             # Run command
@@ -243,25 +237,14 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
             if process.returncode == 0:
                 print(f"Completed {progress}: Prefix: '{prefix_key}', Command: '{line}' in {elapsed_time:.2f}s")
                 # Update TSV with time
-                if prefix_key == "baseline":
-                    results_dict[(kn, tcn)]["baseline"] = f"{elapsed_time:.4f}"
-                elif prefix_key == "compute-sanitizer":
-                    results_dict[(kn, tcn)]["compute-sanitizer"] = f"{elapsed_time:.4f}"
-                elif prefix_key == "z3-sanitizer":
-                    results_dict[(kn, tcn)]["z3-sanitizer"] = f"{elapsed_time:.4f}"
+                results_dict[(kn, tcn)][prefix_key] = f"{elapsed_time:.4f}"
+                # Save progress to log
+                with open(progress_log_file, "a") as log:
+                    log.write(full_cmd + "\n")
             else:
                 print(f"Failed {progress}: Prefix: '{prefix_key}', Command: '{line}'")
                 # Update TSV with "failed"
-                if prefix_key == "baseline":
-                    results_dict[(kn, tcn)]["baseline"] = "failed"
-                elif prefix_key == "compute-sanitizer":
-                    results_dict[(kn, tcn)]["compute-sanitizer"] = "failed"
-                elif prefix_key == "z3-sanitizer":
-                    results_dict[(kn, tcn)]["z3-sanitizer"] = "failed"
-
-            # Save progress to log
-            with open(progress_log_file, "a") as log:
-                log.write(full_cmd + "\n")
+                results_dict[(kn, tcn)][prefix_key] = "failed"
 
             # After each command, save the TSV
             save_tsv_results(tsv_file_path, results_dict)
