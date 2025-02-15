@@ -1,6 +1,6 @@
 {
     "command_list_file": "test_torchao/commands.txt",
     "output_dir": "test_torchao/outputs",
-    "working_dir": "../ao/tests/",
+    "working_dir": "../ao/test/",
     "selected_prefixes": "baseline, compute-sanitizer"
 }
