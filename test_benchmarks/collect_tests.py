@@ -17,10 +17,6 @@ def main():
     command_list_file = config["command_list_file"]
     excel_output_file = command_list_file.replace("commands.txt", "commands_excel.txt")
 
-    if os.path.exists(command_list_file):
-        print(f"Error: The file '{command_list_file}' already exists. Exiting.")
-        return
-
     cmd = ["pytest", "--collect-only", "--quiet", working_dir]
     process = subprocess.run(
         cmd, capture_output=True, text=True
@@ -38,9 +34,8 @@ def main():
             if line.strip():
                 # Remove parameterization details by splitting at the first '['
                 test_identifier = line.split("[")[0]
-                # Remove everything before the first '/' if present
                 if "/" in test_identifier:
-                    test_identifier = test_identifier.rsplit("/", 1)[-1]
+                    test_identifier = test_identifier.split("/", 1)[1]
                 collected_tests.add(test_identifier)
 
         for test in sorted(collected_tests):
