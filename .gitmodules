@@ -25,3 +25,6 @@
 [submodule "ao"]
 	path = ao
 	url = https://github.com/pytorch/ao.git
+[submodule "TritonBench"]
+	path = TritonBench
+	url = https://github.com/thunlp/TritonBench.git
