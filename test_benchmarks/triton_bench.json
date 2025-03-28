@@ -1,0 +1,6 @@
+{
+    "command_list_file": "test_triton_bench/commands.txt",
+    "output_dir": "test_triton_bench/outputs",
+    "working_dir": "../TritonBench/data/TritonBench_G_v1/",
+    "selected_prefixes": "baseline, compute-sanitizer"
+}
