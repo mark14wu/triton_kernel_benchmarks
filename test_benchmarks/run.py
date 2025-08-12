@@ -121,8 +121,9 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
 
     }
     prefix_env_setup = {
+        "baseline": "source ~/.bashrc",
         "baseline-amd": "source /root/triton/bin/activate",
-        "compute-sanitizer": "deactivate && source /home/hwu27/workspace/venv/triton_cuda_12_2/bin/activate && source /etc/profile.d/modules.sh && module load cuda/12.2",
+        "compute-sanitizer": "source ~/.bashrc && deactivate && source /home/hwu27/workspace/venv/triton_cuda_12_2/bin/activate && source /etc/profile.d/modules.sh && module load cuda/12.2",
         "llvm-sanitizer": "source /root/triton/bin/activate"
     }
 
@@ -223,7 +224,7 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
             if prefix_key in prefix_env_setup:
                 env_command = prefix_env_setup[prefix_key]
                 process = subprocess.Popen(
-                    f"bash -c 'source ~/.bashrc && {env_command} && {full_cmd}'",
+                    f"bash -c '{env_command} && {full_cmd}'",
                     shell=True, cwd=working_dir, stdout=open(output_file, "w"), stderr=subprocess.STDOUT
                 )
             else:
