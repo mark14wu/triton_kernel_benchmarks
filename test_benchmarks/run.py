@@ -113,16 +113,14 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
 
     # Define the different prefixes and their environment setup
     prefixes = {
-        "baseline": "",
-        "baseline_inductor": "TORCH_COMPILE=1 ",
-        "compute-sanitizer": "PYTORCH_NO_CUDA_MEMORY_CACHING=1 compute-sanitizer ",
-        "compute-sanitizer_inductor": "TORCH_COMPILE=1 PYTORCH_NO_CUDA_MEMORY_CACHING=1 compute-sanitizer ",
-        "triton-sanitizer": "TRITON_SANITIZER_BACKEND=brute_force ",
-        "z3-sanitizer": "TRITON_SANITIZER_BACKEND=z3 ",
+        "baseline": "TRITON_ALWAYS_COMPILE=1 ",
+        "compute-sanitizer": "TRITON_ALWAYS_COMPILE=1 PYTORCH_NO_CUDA_MEMORY_CACHING=1 compute-sanitizer ",
+        "llvm-sanitizer": "TRITON_ENABLE_ASAN=1 TRITON_ALWAYS_COMPILE=1 ",
+        "z3-sanitizer": "TRITON_SANITIZER_BACKEND=symexec ",
+
     }
     prefix_env_setup = {
-        "compute-sanitizer": "source /etc/profile.d/modules.sh && module load cuda/12.8",
-        "compute-sanitizer_inductor": "source /etc/profile.d/modules.sh && module load cuda/12.8",
+        "compute-sanitizer": "deactivate && source /home/hwu27/workspace/venv/triton_cuda_12_2/bin/activate && source /etc/profile.d/modules.sh && module load cuda/12.2",
     }
 
     # Process comma-separated prefixes into a list
