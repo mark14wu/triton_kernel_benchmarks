@@ -114,12 +114,14 @@ def run_commands(command_list_file, output_dir, working_dir, selected_prefixes):
     # Define the different prefixes and their environment setup
     prefixes = {
         "baseline": "TRITON_SANITIZER_BACKEND=off TRITON_ALWAYS_COMPILE=1 ",
+        "baseline-amd": "TRITON_SANITIZER_BACKEND=off TRITON_ALWAYS_COMPILE=1 ",
         "compute-sanitizer": "TRITON_ALWAYS_COMPILE=1 PYTORCH_NO_CUDA_MEMORY_CACHING=1 compute-sanitizer ",
         "llvm-sanitizer": "TRITON_ENABLE_ASAN=1 TRITON_ALWAYS_COMPILE=1 ",
         "z3-sanitizer": "TRITON_SANITIZER_BACKEND=symexec ",
 
     }
     prefix_env_setup = {
+        "baseline-amd": "source /root/triton/bin/activate",
         "compute-sanitizer": "deactivate && source /home/hwu27/workspace/venv/triton_cuda_12_2/bin/activate && source /etc/profile.d/modules.sh && module load cuda/12.2",
         "llvm-sanitizer": "source /root/triton/bin/activate"
     }

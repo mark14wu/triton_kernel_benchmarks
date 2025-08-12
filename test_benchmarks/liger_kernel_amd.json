@@ -2,5 +2,5 @@
     "command_list_file": "test_liger_kernel/commands.txt",
     "output_dir": "test_liger_kernel/outputs",
     "working_dir": "../liger_kernel/test/transformers/",
-    "selected_prefixes": "baseline, llvm-sanitizer"
+    "selected_prefixes": "baseline-amd, llvm-sanitizer"
 }
